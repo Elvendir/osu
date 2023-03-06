@@ -37,8 +37,7 @@ namespace osu.Game.Rulesets.Mania.Mods
             MinValue = 1,
             MaxValue = 16,
             Default = 4,
-            Value = 4,
-            Precision = 1
+            Value = 4
         };
 
         [SettingSource("Shortest HoldNote duration", "Fraction of beat under which an HoldNote becomes a Note.")]
@@ -47,8 +46,7 @@ namespace osu.Game.Rulesets.Mania.Mods
             MinValue = 1,
             MaxValue = 32,
             Default = 8,
-            Value = 8,
-            Precision = 1
+            Value = 8
         };
 
         [SettingSource("Type of HoldNotes convertion", "0:Deleted. 1:Conserved. 2:Extended. 3:Inverted.")]
@@ -56,9 +54,8 @@ namespace osu.Game.Rulesets.Mania.Mods
         {
             MinValue = 0,
             MaxValue = 3,
-            Default = 1,
-            Value = 1,
-            Precision = 1
+            Default = 2,
+            Value = 2
         };
 
         [SettingSource("Converion for short HoldNotes", "1:Note. 2:Half-Length. 3:Constant.")]
@@ -66,12 +63,9 @@ namespace osu.Game.Rulesets.Mania.Mods
         {
             MinValue = 1,
             MaxValue = 3,
-            Default = 1,
-            Value = 1,
-            Precision = 1
+            Default = 2,
+            Value = 2
         };
-
-        private int floatErrorLeniency = 128;
 
         public void ApplyToBeatmap(IBeatmap beatmap)
         {
@@ -80,8 +74,6 @@ namespace osu.Game.Rulesets.Mania.Mods
             var newObjects = new List<ManiaHitObject>();
 
             var allowedTypes = new[] { typeof(Note), typeof(HoldNote) };
-
-            double beatShortestScaling = 1 / ShortestBeat.Value;
 
             foreach (var column in maniaBeatmap.HitObjects.GroupBy(h => h.Column))
             {
@@ -103,7 +95,7 @@ namespace osu.Game.Rulesets.Mania.Mods
                         duration = durationcalculation(locations[i + 1].StartTime - locations[i].StartTime, beatLength);
 
                         // If duration is shorter than shortest one requested make it a Note
-                        if (duration < beatLength / ShortestBeat.Value - beatLength / floatErrorLeniency)
+                        if (duration < beatLength / ShortestBeat.Value - beatLength / float_error_leniency)
                         {
                             newColumnObjects.Add(new Note
                             {
@@ -146,7 +138,7 @@ namespace osu.Game.Rulesets.Mania.Mods
                                 duration = durationcalculation(locations[i + 1].StartTime - loclocation.StartTime, beatLength);
 
                                 // If duration is shorter than shortest one requested make it a Note
-                                if (duration < beatLength / ShortestBeat.Value - beatLength / floatErrorLeniency)
+                                if (duration < beatLength / ShortestBeat.Value - beatLength / float_error_leniency)
                                 {
                                     newColumnObjects.Add(new Note
                                     {
@@ -177,7 +169,7 @@ namespace osu.Game.Rulesets.Mania.Mods
                                 duration = durationcalculation(locations[i + 1].StartTime - loclocation.EndTime, beatLength);
 
                                 // If duration is shorter than shortest one requested make it a Note
-                                if (duration < beatLength / ShortestBeat.Value - beatLength / floatErrorLeniency)
+                                if (duration < beatLength / ShortestBeat.Value - beatLength / float_error_leniency)
                                 {
                                     newColumnObjects.Add(new Note
                                     {
@@ -203,7 +195,37 @@ namespace osu.Game.Rulesets.Mania.Mods
                 }
 
                 // Adds last HitObject in column
-                newColumnObjects.Add(locations.Last());
+                if (locations.Last() is Note)
+                {
+                    newColumnObjects.Add(locations.Last());
+                }
+
+                if (locations.Last() is HoldNote loclocation2)
+                {
+                    switch (TypeHoldNoteConversion.Value)
+                    {
+                        // Deletes HoldNotes
+                        case 0:
+                            break;
+
+                        case 1:
+                            newColumnObjects.Add(loclocation2);
+                            break;
+
+                        case 2:
+                            newColumnObjects.Add(loclocation2);
+                            break;
+
+                        case 3:
+                            newColumnObjects.Add(new Note
+                            {
+                                Column = column.Key,
+                                StartTime = loclocation2.EndTime,
+                                Samples = loclocation2.GetNodeSamples(1)
+                            });
+                            break;
+                    }
+                }
 
                 newObjects.AddRange(newColumnObjects);
             }
@@ -213,6 +235,8 @@ namespace osu.Game.Rulesets.Mania.Mods
             // No breaks
             maniaBeatmap.Breaks.Clear();
         }
+
+        private const int float_error_leniency = 128;
 
         private double durationcalculation(double fullduration, double beatLength)
         {
@@ -240,7 +264,7 @@ namespace osu.Game.Rulesets.Mania.Mods
                     {
                         duration -= beatLength / SpaceBeat.Value;
                     }
-                    else if (duration / 2 >= beatLength / ShortestBeat.Value - beatLength / floatErrorLeniency)
+                    else if (duration / 2 >= beatLength / ShortestBeat.Value - beatLength / float_error_leniency)
                     {
                         duration = beatLength / ShortestBeat.Value;
                     }
@@ -248,6 +272,7 @@ namespace osu.Game.Rulesets.Mania.Mods
                     {
                         duration = 0;
                     }
+
                     break;
             }
 
