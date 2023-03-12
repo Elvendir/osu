@@ -3,6 +3,7 @@
 
 using System;
 using System.Linq;
+using osu.Framework.Bindables;
 using osu.Game.Beatmaps;
 using osu.Game.Rulesets.Mania.Objects;
 using osu.Game.Rulesets.Mods;
@@ -10,6 +11,8 @@ using osu.Framework.Graphics.Sprites;
 using System.Collections.Generic;
 using osu.Framework.Localisation;
 using osu.Game.Rulesets.Mania.Beatmaps;
+using osu.Game.Configuration;
+using osu.Game.Audio;
 
 namespace osu.Game.Rulesets.Mania.Mods
 {
@@ -29,7 +32,24 @@ namespace osu.Game.Rulesets.Mania.Mods
 
         public override Type[] IncompatibleMods => new[] { typeof(ManiaModInvert) };
 
-        public const double END_NOTE_ALLOW_THRESHOLD = 0.5;
+        [SettingSource("Releases are Notes too", "Converts end of HoldNotes as Notes.")]
+        public BindableBool ConvertReleases { get; } = new BindableBool(false);
+
+        [SettingSource("More rice please.", "Converts HoldNotes into consecutives Notes. Notes are separated by BeatLength / Value.")]
+        public BindableNumber<int> SpaceBeat { get; } = new BindableInt(1)
+        {
+            MinValue = 0,
+            MaxValue = 16,
+            Default = 0,
+            Value = 0
+        };
+
+        [SettingSource("But not too much.", "Notes are separated by BeatLength * TimeSignature / Value instead.")]
+        public BindableBool LessNotes { get; } = new BindableBool(false);
+
+
+        [SettingSource("And without sound.", "Activates/Deactivates HitSounds for added extra Notes.")]
+        public BindableBool NoExtraSound { get; } = new BindableBool(false);
 
         public void ApplyToBeatmap(IBeatmap beatmap)
         {
@@ -47,10 +67,8 @@ namespace osu.Game.Rulesets.Mania.Mods
                     Samples = h.GetNodeSamples(0)
                 });
 
-                // Don't add an end note if the duration is shorter than the threshold
-                double noteValue = GetNoteDurationInBeatLength(h, maniaBeatmap); // 1/1, 1/2, 1/4, etc.
-
-                if (noteValue >= END_NOTE_ALLOW_THRESHOLD)
+                // Add a note for the end of the hold note if asked
+                if (ConvertReleases.Value)
                 {
                     newObjects.Add(new Note
                     {
@@ -59,15 +77,40 @@ namespace osu.Game.Rulesets.Mania.Mods
                         Samples = h.GetNodeSamples((h.NodeSamples?.Count - 1) ?? 1)
                     });
                 }
+
+                // Add a note every 1 / SpaceBeat
+                if (SpaceBeat.Value > 0)
+                {
+                    int signature = beatmap.ControlPointInfo.TimingPointAt(h.StartTime).TimeSignature.Numerator;
+                    double noteSeparation = beatmap.ControlPointInfo.TimingPointAt(h.StartTime).BeatLength / SpaceBeat.Value;
+                    if (LessNotes.Value)
+                    {
+                        noteSeparation *= signature;
+                    }
+                    for (double startTime = h.StartTime + noteSeparation; startTime < h.EndTime; startTime += noteSeparation)
+                    {
+                        if (NoExtraSound.Value)
+                        {
+                            newObjects.Add(new Note
+                            {
+                                Column = h.Column,
+                                StartTime = startTime,
+                                Samples = Array.Empty<HitSampleInfo>()
+                            });
+                        }
+                        else
+                        {
+                            newObjects.Add(new Note
+                            {
+                                Column = h.Column,
+                                StartTime = startTime,
+                                Samples = h.GetNodeSamples(0)
+                            });
+                        }
+                    }
+                }
             }
-
             maniaBeatmap.HitObjects = maniaBeatmap.HitObjects.OfType<Note>().Concat(newObjects).OrderBy(h => h.StartTime).ToList();
-        }
-
-        public static double GetNoteDurationInBeatLength(HoldNote holdNote, ManiaBeatmap beatmap)
-        {
-            double beatLength = beatmap.ControlPointInfo.TimingPointAt(holdNote.StartTime).BeatLength;
-            return holdNote.Duration / beatLength;
         }
     }
 }
