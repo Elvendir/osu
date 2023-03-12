@@ -35,6 +35,23 @@ namespace osu.Game.Rulesets.Mania.Tests.Mods
             PassCondition = () => true
         });
 
+        [TestCase(4, 8, 1)]
+        [TestCase(4, 8, 2)]
+        [TestCase(4, 8, 3)]
+        [TestCase(4, 32, 2)]
+        [TestCase(1, 1, 1)]
+        public void VisualShortHoldNoteTestInversion(int spacing, int release, int shorttype) => CreateModTest(new ModTestData
+        {
+            Beatmap = createRawBeatmap2(),
+            Mod = new ManiaModInvert
+            {
+                SpaceBeat = { Value = spacing },
+                ShortestBeat = { Value = release },
+                TypeShortHoldNoteConversion = { Value = shorttype }
+            },
+            PassCondition = () => true
+        });
+
         [TestCase(4, 4, 1, 1, 0)]
         [TestCase(1, 1, 1, 1, 1)]
         [TestCase(8, 16, 1, 1, 2)]
@@ -53,7 +70,7 @@ namespace osu.Game.Rulesets.Mania.Tests.Mods
 
         private static ManiaBeatmap createRawBeatmap()
         {
-            var beatmap = new ManiaBeatmap(new StageDefinition(1), 1);
+            var beatmap = new ManiaBeatmap(new StageDefinition(1));
             beatmap.ControlPointInfo.Add(0.0, new TimingControlPoint { BeatLength = 1000 }); // Set BPM to 60
 
             // Add test hit objects
@@ -64,6 +81,30 @@ namespace osu.Game.Rulesets.Mania.Tests.Mods
             beatmap.HitObjects.Add(new Note { StartTime = 500 + 250 + 125 + 63 }); // 1/2
             beatmap.HitObjects.Add(new Note { StartTime = 1000 + 500 + 250 + 125 + 63 }); // 1
             beatmap.HitObjects.Add(new HoldNote { StartTime = 3000 + 500 + 250 + 125 + 63, EndTime = 250 + 3000 + 500 + 250 + 125 + 63 }); // 2 + 1/4 HoldNote
+            return beatmap;
+        }
+
+        private static ManiaBeatmap createRawBeatmap2()
+        {
+            var beatmap = new ManiaBeatmap(new StageDefinition(7));
+            beatmap.ControlPointInfo.Add(0.0, new TimingControlPoint { BeatLength = 1000 }); // Set BPM to 60
+
+            // Add test hit objects
+            beatmap.HitObjects.Add(new Note { StartTime = 0, Column = 0 });
+            beatmap.HitObjects.Add(new Note { StartTime = 0, Column = 1 });
+            beatmap.HitObjects.Add(new Note { StartTime = 0, Column = 2 });
+            beatmap.HitObjects.Add(new Note { StartTime = 0, Column = 3 });
+            beatmap.HitObjects.Add(new Note { StartTime = 0, Column = 4 });
+            beatmap.HitObjects.Add(new Note { StartTime = 0, Column = 5 });
+            beatmap.HitObjects.Add(new Note { StartTime = 0, Column = 6 });
+            beatmap.HitObjects.Add(new Note { StartTime = 500, Column = 0 });
+            beatmap.HitObjects.Add(new Note { StartTime = 500 - 63, Column = 1 });
+            beatmap.HitObjects.Add(new Note { StartTime = 500 - 125, Column = 2 });
+            beatmap.HitObjects.Add(new Note { StartTime = 500 - 125 - 63, Column = 3 });
+            beatmap.HitObjects.Add(new Note { StartTime = 500 - 250, Column = 4 });
+            beatmap.HitObjects.Add(new Note { StartTime = 500 - 250 - 63, Column = 5 });
+            beatmap.HitObjects.Add(new Note { StartTime = 500 - 375, Column = 6 });
+
             return beatmap;
         }
 
