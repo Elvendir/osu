@@ -16,56 +16,38 @@ namespace osu.Game.Rulesets.Mania.Tests.Mods
     {
         protected override Ruleset CreatePlayerRuleset() => new ManiaRuleset();
 
-        [TestCase(4, 4, 1, 1)]
-        [TestCase(1, 1, 1, 1)]
-        [TestCase(8, 16, 1, 1)]
-        [TestCase(4, 8, 2, 1)]
-        [TestCase(4, 8, 3, 1)]
-        [TestCase(4, 8, 0, 1)]
-        public void VisualTestInversion(int spacing, int release, int holdtype, int shorttype) => CreateModTest(new ModTestData
+        [Test]
+        public void VisualTestInversion() => CreateModTest(new ModTestData
         {
             Beatmap = createRawBeatmap(),
-            Mod = new ManiaModInvert
-            {
-                SpaceBeat = { Value = spacing },
-                ShortestBeat = { Value = release },
-                TypeHoldNoteConversion = { Value = holdtype },
-                TypeShortHoldNoteConversion = { Value = shorttype }
-            },
+            Mod = new ManiaModInvert(),
             PassCondition = () => true
         });
 
-        [TestCase(4, 8, 1)]
-        [TestCase(4, 8, 2)]
-        [TestCase(4, 8, 3)]
-        [TestCase(4, 32, 2)]
-        [TestCase(1, 1, 1)]
-        public void VisualShortHoldNoteTestInversion(int spacing, int release, int shorttype) => CreateModTest(new ModTestData
+        [Test]
+        public void VisualShortHoldNoteTestInversion() => CreateModTest(new ModTestData
         {
             Beatmap = createRawBeatmap2(),
-            Mod = new ManiaModInvert
-            {
-                SpaceBeat = { Value = spacing },
-                ShortestBeat = { Value = release },
-                TypeShortHoldNoteConversion = { Value = shorttype }
-            },
+            Mod = new ManiaModInvert(),
             PassCondition = () => true
         });
 
-        [TestCase(4, 4, 1, 1, 0)]
-        [TestCase(1, 1, 1, 1, 1)]
-        [TestCase(8, 16, 1, 1, 2)]
-        [TestCase(4, 8, 2, 1, 3)]
-        [TestCase(4, 8, 3, 1, 4)]
-        [TestCase(4, 8, 0, 1, 5)]
-        public void TestInversion(int spacing, int release, int holdtype, int shorttype, int testnumb)
+        [Test]
+        public void TestInversion1()
         {
-            var testBeatmap = createModdedBeatmap(spacing, release, holdtype, shorttype);
-            int[] expectedHoldNotes = { 4, 2, 5, 4, 3, 3 };
-            int[] expectedNotes = { 7, 7, 7, 7, 7, 6 };
+            var testBeatmap = createModdedBeatmap(createRawBeatmap());
             int count = testBeatmap.HitObjects.OfType<HoldNote>().ToList().Count;
             int count2 = testBeatmap.HitObjects.ToList().Count;
-            Assert.That(count == expectedHoldNotes[testnumb] && count2 == expectedNotes[testnumb]);
+            Assert.That(count == 4 && count2 == 7);
+        }
+
+        [Test]
+        public void TestInversion2()
+        {
+            var testBeatmap = createModdedBeatmap(createRawBeatmap2());
+            int count = testBeatmap.HitObjects.OfType<HoldNote>().ToList().Count;
+            int count2 = testBeatmap.HitObjects.ToList().Count;
+            Assert.That(count == 3 && count2 == 14);
         }
 
         private static ManiaBeatmap createRawBeatmap()
@@ -97,27 +79,20 @@ namespace osu.Game.Rulesets.Mania.Tests.Mods
             beatmap.HitObjects.Add(new Note { StartTime = 0, Column = 4 });
             beatmap.HitObjects.Add(new Note { StartTime = 0, Column = 5 });
             beatmap.HitObjects.Add(new Note { StartTime = 0, Column = 6 });
-            beatmap.HitObjects.Add(new Note { StartTime = 500, Column = 0 });
-            beatmap.HitObjects.Add(new Note { StartTime = 500 - 63, Column = 1 });
-            beatmap.HitObjects.Add(new Note { StartTime = 500 - 125, Column = 2 });
-            beatmap.HitObjects.Add(new Note { StartTime = 500 - 125 - 63, Column = 3 });
-            beatmap.HitObjects.Add(new Note { StartTime = 500 - 250, Column = 4 });
-            beatmap.HitObjects.Add(new Note { StartTime = 500 - 250 - 63, Column = 5 });
-            beatmap.HitObjects.Add(new Note { StartTime = 500 - 375, Column = 6 });
+            beatmap.HitObjects.Add(new Note { StartTime = 500, Column = 0 }); // 1/2
+            beatmap.HitObjects.Add(new Note { StartTime = 500 - 63, Column = 1 }); // 1/4 + 1/8 + 1/16
+            beatmap.HitObjects.Add(new Note { StartTime = 500 - 125, Column = 2 }); // 1/4 + 1/8
+            beatmap.HitObjects.Add(new Note { StartTime = 500 - 125 - 63, Column = 3 }); // 1/4 + 1/16
+            beatmap.HitObjects.Add(new Note { StartTime = 500 - 250, Column = 4 }); // 1/4
+            beatmap.HitObjects.Add(new Note { StartTime = 500 - 250 - 63, Column = 5 }); // 1/8 + 1/16
+            beatmap.HitObjects.Add(new Note { StartTime = 500 - 375, Column = 6 }); // 1/8
 
             return beatmap;
         }
 
-        private static ManiaBeatmap createModdedBeatmap(int spacing, int release, int holdtype, int shorttype)
+        private static ManiaBeatmap createModdedBeatmap(ManiaBeatmap beatmap)
         {
-            var beatmap = createRawBeatmap();
-            var holdOffMod = new ManiaModInvert
-            {
-                SpaceBeat = { Value = spacing },
-                ShortestBeat = { Value = release },
-                TypeHoldNoteConversion = { Value = holdtype },
-                TypeShortHoldNoteConversion = { Value = shorttype }
-            };
+            var holdOffMod = new ManiaModInvert();
 
             foreach (var hitObject in beatmap.HitObjects)
                 hitObject.ApplyDefaults(beatmap.ControlPointInfo, new BeatmapDifficulty());
@@ -128,3 +103,4 @@ namespace osu.Game.Rulesets.Mania.Tests.Mods
         }
     }
 }
+
