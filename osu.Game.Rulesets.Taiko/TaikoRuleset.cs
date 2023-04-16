@@ -35,11 +35,15 @@ using osu.Game.Skinning;
 using osu.Game.Rulesets.Configuration;
 using osu.Game.Configuration;
 using osu.Game.Rulesets.Taiko.Configuration;
+using osu.Game.Rulesets.Difficulty.PlayerSimulation;
+using osu.Game.Rulesets.Taiko.Difficulty.PlayerSimulation;
 
 namespace osu.Game.Rulesets.Taiko
 {
     public class TaikoRuleset : Ruleset, ILegacyRuleset
     {
+        public override DifficultyGraph CreateDifficultyGraph() => new TaikoDifficultyGraph();
+
         public override DrawableRuleset CreateDrawableRulesetWith(IBeatmap beatmap, IReadOnlyList<Mod>? mods = null) => new DrawableTaikoRuleset(this, beatmap, mods);
 
         public override ScoreProcessor CreateScoreProcessor() => new TaikoScoreProcessor();

@@ -18,6 +18,7 @@ using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.UI;
 using osu.Game.Skinning;
+using osu.Game.Rulesets.Difficulty.PlayerSimulation;
 
 namespace osu.Game.Beatmaps
 {
@@ -62,6 +63,10 @@ namespace osu.Game.Beatmaps
 
         private class DummyRuleset : Ruleset
         {
+            public override DifficultyGraph CreateDifficultyGraph()
+            {
+                throw new NotImplementedException();
+            }
             public override IEnumerable<Mod> GetModsFor(ModType type) => Array.Empty<Mod>();
 
             public override DrawableRuleset CreateDrawableRulesetWith(IBeatmap beatmap, IReadOnlyList<Mod> mods = null)

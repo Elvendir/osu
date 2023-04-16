@@ -11,12 +11,15 @@ using osu.Framework.Graphics;
 using osu.Game.Beatmaps;
 using osu.Game.Configuration;
 using osu.Game.Screens.Select.Leaderboards;
+using osu.Game.Rulesets.Difficulty.PlayerSimulation;
+
 
 namespace osu.Game.Screens.Select
 {
     public partial class PlayBeatmapDetailArea : BeatmapDetailArea
     {
         public readonly BeatmapLeaderboard Leaderboard;
+        public readonly BeatmapDifficultyGraph DifficultyGraph;
 
         public override WorkingBeatmap Beatmap
         {
@@ -26,6 +29,8 @@ namespace osu.Game.Screens.Select
                 base.Beatmap = value;
 
                 Leaderboard.BeatmapInfo = value is DummyWorkingBeatmap ? null : value?.BeatmapInfo;
+                DifficultyGraph.Beatmap = value;
+
             }
         }
 
@@ -36,6 +41,7 @@ namespace osu.Game.Screens.Select
         public PlayBeatmapDetailArea()
         {
             Add(Leaderboard = new BeatmapLeaderboard { RelativeSizeAxes = Axes.Both });
+            Add(DifficultyGraph = new BeatmapDifficultyGraph { RelativeSizeAxes = Axes.Both });
         }
 
         [BackgroundDependencyLoader]
@@ -69,10 +75,17 @@ namespace osu.Game.Screens.Select
                 case BeatmapDetailAreaLeaderboardTabItem<BeatmapLeaderboardScope> leaderboard:
                     Leaderboard.Scope = leaderboard.Scope;
                     Leaderboard.Show();
+                    DifficultyGraph.Hide();
+                    break;
+
+                case BeatmapDetailAreaDifficultyTabItem:
+                    DifficultyGraph.Show();
+                    Leaderboard.Hide();
                     break;
 
                 default:
                     Leaderboard.Hide();
+                    DifficultyGraph.Hide();
                     break;
             }
         }
@@ -83,6 +96,7 @@ namespace osu.Game.Screens.Select
             new BeatmapDetailAreaLeaderboardTabItem<BeatmapLeaderboardScope>(BeatmapLeaderboardScope.Country),
             new BeatmapDetailAreaLeaderboardTabItem<BeatmapLeaderboardScope>(BeatmapLeaderboardScope.Global),
             new BeatmapDetailAreaLeaderboardTabItem<BeatmapLeaderboardScope>(BeatmapLeaderboardScope.Friend),
+            new BeatmapDetailAreaDifficultyTabItem()
         }).ToArray();
 
         private BeatmapDetailAreaTabItem getTabItemFromTabType(TabType type)
@@ -91,6 +105,9 @@ namespace osu.Game.Screens.Select
             {
                 case TabType.Details:
                     return new BeatmapDetailAreaDetailTabItem();
+
+                case TabType.Difficulty:
+                    return new BeatmapDetailAreaDifficultyTabItem();
 
                 case TabType.Local:
                     return new BeatmapDetailAreaLeaderboardTabItem<BeatmapLeaderboardScope>(BeatmapLeaderboardScope.Local);
@@ -115,6 +132,9 @@ namespace osu.Game.Screens.Select
             {
                 case BeatmapDetailAreaDetailTabItem:
                     return TabType.Details;
+
+                case BeatmapDetailAreaDifficultyTabItem:
+                    return TabType.Difficulty;
 
                 case BeatmapDetailAreaLeaderboardTabItem<BeatmapLeaderboardScope> leaderboardTab:
                     switch (leaderboardTab.Scope)
@@ -146,7 +166,8 @@ namespace osu.Game.Screens.Select
             Local,
             Country,
             Global,
-            Friends
+            Friends,
+            Difficulty
         }
     }
 }

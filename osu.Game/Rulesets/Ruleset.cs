@@ -31,6 +31,7 @@ using osu.Game.Screens.Edit.Setup;
 using osu.Game.Screens.Ranking.Statistics;
 using osu.Game.Skinning;
 using osu.Game.Users;
+using osu.Game.Rulesets.Difficulty.PlayerSimulation;
 
 namespace osu.Game.Rulesets
 {
@@ -40,6 +41,8 @@ namespace osu.Game.Rulesets
         public RulesetInfo RulesetInfo { get; }
 
         private static readonly ConcurrentDictionary<string, IMod[]> mod_reference_cache = new ConcurrentDictionary<string, IMod[]>();
+
+        public abstract DifficultyGraph CreateDifficultyGraph();
 
         /// <summary>
         /// Version history:

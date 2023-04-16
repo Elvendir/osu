@@ -16,6 +16,7 @@ using osu.Game.Graphics;
 using osu.Game.Overlays.Settings;
 using osu.Game.Rulesets.Configuration;
 using osu.Game.Rulesets.Difficulty;
+using osu.Game.Rulesets.Difficulty.PlayerSimulation;
 using osu.Game.Rulesets.Edit;
 using osu.Game.Rulesets.Filter;
 using osu.Game.Rulesets.Mania.Beatmaps;
@@ -38,6 +39,7 @@ using osu.Game.Scoring;
 using osu.Game.Screens.Edit.Setup;
 using osu.Game.Screens.Ranking.Statistics;
 using osu.Game.Skinning;
+using osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation;
 
 namespace osu.Game.Rulesets.Mania
 {
@@ -47,6 +49,7 @@ namespace osu.Game.Rulesets.Mania
         /// The maximum number of supported keys in a single stage.
         /// </summary>
         public const int MAX_STAGE_KEYS = 10;
+        public override DifficultyGraph CreateDifficultyGraph() => new ManiaDifficultyGraph();
 
         public override DrawableRuleset CreateDrawableRulesetWith(IBeatmap beatmap, IReadOnlyList<Mod>? mods = null) => new DrawableManiaRuleset(this, beatmap, mods);
 
