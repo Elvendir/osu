@@ -24,6 +24,8 @@ using osu.Game.Beatmaps;
 using osu.Game.Rulesets.Scoring;
 using osu.Framework.Extensions;
 using System.Diagnostics;
+using osu.Game.Rulesets.Mania.Beatmaps;
+using osu.Game.Rulesets.Mania.Objects;
 
 namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
 {
@@ -100,7 +102,7 @@ namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
                 for (int j = 0; j < 6; j++)
                 {
                     float judgment_percent_f = processor.HitEvents.Where(d => d.Result == processor.Judgements[j]).Count();
-                    maxHitEvents = processor.HitEvents.Count();
+                    maxHitEvents = processor.HitEvents.Where(d => processor.Judgements.Contains(d.Result)).Count();
                     if (j == 0)
                     {
                         judgement_percent[j].Add(judgment_percent_f);
@@ -120,7 +122,9 @@ namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
                 Name = name,
                 RelativeSizeAxes = Axes.Both,
                 LineColour = colour,
-                Values = results
+                MaxValue = 1000000,
+                MinValue = 0,
+                Values = results,
             });
             for (int j = 0; j < 5; j++)
             {

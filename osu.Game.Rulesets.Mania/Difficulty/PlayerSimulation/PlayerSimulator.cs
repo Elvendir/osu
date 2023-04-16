@@ -11,6 +11,7 @@ using osu.Game.Rulesets.Mania.Beatmaps;
 using osu.Game.Rulesets.Mania.Scoring;
 using osu.Game.Rulesets.Mania.Objects;
 using osu.Game.Rulesets.Scoring;
+using osu.Game.Rulesets.Objects;
 
 namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
 {
@@ -25,65 +26,130 @@ namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
                 HitObjects = (List<ManiaHitObject>)beatmap.HitObjects
             };
 
-            foreach (var column in maniaBeatmap.HitObjects.GroupBy(h => h.Column))
-            {
-                var listObjects = column.ToList();
-                for (int i = 0; i < listObjects.Count; i++)
-                {
-                    var obj = listObjects[i];
-                    var judgement = obj.CreateJudgement();
+            var listObjects = maniaBeatmap.HitObjects.OrderBy(h => h.StartTime).ToList();
 
-                    if (obj is HoldNote objHold)
+            List<int> previousInColumn = Enumerable.Repeat(-1, maniaBeatmap.TotalColumns).ToList();
+            List<int> nextInColumn = Enumerable.Repeat(-1, maniaBeatmap.TotalColumns).ToList();
+            List<int> currentHoldNoteId = new List<int>();
+            List<HoldNote> currentHoldNote = new List<HoldNote>();
+
+            for (int i = 0; i < maniaBeatmap.TotalColumns; i++)
+            {
+                nextInColumn[i] = getNextInColumn(listObjects, 0);
+            }
+
+            for (int i = 0; i < listObjects.Count; i++)
+            {
+                var obj = listObjects[i];
+                var judgement = obj.CreateJudgement();
+                nextInColumn[obj.Column] = getNextInColumn(listObjects, i);
+
+                if (obj is HoldNote objHold)
+                {
+                    judgement = objHold.Head.CreateJudgement();
+                    currentHoldNoteId.Add(i);
+                    currentHoldNote.Add(objHold);
+                }
+
+                for (int j = currentHoldNoteId.Count - 1; j >= 0; j--)
+                {
+                    HoldNote holdNote = currentHoldNote[j];
+                    if (holdNote.EndTime <= obj.StartTime)
                     {
-                        judgement = objHold.Head.CreateJudgement();
+                        var judgementTail = holdNote.Tail.CreateJudgement();
+                        var resultTail = CreateResult(holdNote, judgementTail) ?? throw new InvalidOperationException($"{GetType().ReadableName()} must provide a {nameof(JudgementResult)} through {nameof(CreateResult)}.");
+                        resultTail.Type = GetSimulatedTailHitResult(judgementTail, listObjects, j, PlayerLevel, previousInColumn, nextInColumn, currentHoldNoteId);
+                        ApplyResult(resultTail);
+
+                        foreach (HoldNoteTick tick in holdNote.NestedHitObjects.OfType<HoldNoteTick>())
+                        {
+                            var judgementTick = tick.CreateJudgement();
+                            var resultTick = CreateResult(holdNote, judgementTick) ?? throw new InvalidOperationException($"{GetType().ReadableName()} must provide a {nameof(JudgementResult)} through {nameof(CreateResult)}.");
+                            resultTick.Type = HitResult.LargeTickHit;
+                            ApplyResult(resultTick);
+                        }
+
+                        currentHoldNote.RemoveAt(j);
+                        currentHoldNoteId.RemoveAt(j);
                     }
-
-                    var result = CreateResult(obj, judgement) ?? throw new InvalidOperationException($"{GetType().ReadableName()} must provide a {nameof(JudgementResult)} through {nameof(CreateResult)}.");
-
-                    result.Type = GetSimulatedPlayerHitResult(judgement, listObjects, i, PlayerLevel);
-
-                    ApplyResult(result);
                 }
+
+                var result = CreateResult(obj, judgement) ?? throw new InvalidOperationException($"{GetType().ReadableName()} must provide a {nameof(JudgementResult)} through {nameof(CreateResult)}.");
+
+                result.Type = GetSimulatedNoteHitResult(judgement, listObjects, i, PlayerLevel, previousInColumn, nextInColumn, currentHoldNoteId);
+
+                ApplyResult(result);
+                previousInColumn[obj.Column] = i;
+            }
+
+            for (int j = currentHoldNoteId.Count - 1; j >= 0; j--)
+            {
+                HoldNote holdNote = currentHoldNote[j];
+
+                var judgementTail = holdNote.Tail.CreateJudgement();
+                var resultTail = CreateResult(holdNote, judgementTail) ?? throw new InvalidOperationException($"{GetType().ReadableName()} must provide a {nameof(JudgementResult)} through {nameof(CreateResult)}.");
+                resultTail.Type = GetSimulatedTailHitResult(judgementTail, listObjects, j, PlayerLevel, previousInColumn, nextInColumn, currentHoldNoteId);
+                ApplyResult(resultTail);
+
+                foreach (HoldNoteTick tick in holdNote.NestedHitObjects.OfType<HoldNoteTick>())
+                {
+                    var judgementTick = tick.CreateJudgement();
+                    var resultTick = CreateResult(holdNote, judgementTick) ?? throw new InvalidOperationException($"{GetType().ReadableName()} must provide a {nameof(JudgementResult)} through {nameof(CreateResult)}.");
+                    resultTick.Type = HitResult.LargeTickHit;
+                    ApplyResult(resultTick);
+                }
+
+                currentHoldNote.RemoveAt(j);
+                currentHoldNoteId.RemoveAt(j);
             }
         }
 
-        protected virtual HitResult GetSimulatedPlayerHitResult(Judgement judgement, List<ManiaHitObject> listObjects, int i, double PlayerLevel)
+        protected virtual HitResult GetSimulatedNoteHitResult(Judgement judgement, List<ManiaHitObject> listObjects, int i, double PlayerLevel, List<int> previousInColumn, List<int> nextInColumn, List<int> currentHoldNoteId)
         {
-            int j = 0;
-            List<double> difficultyPerJudgement = DifficultyPerJudgement(listObjects, i);
-            while (PlayerLevel < difficultyPerJudgement[j] && j < 5) j++;
-            return Judgements[j];
+            var obj = listObjects[i];
+            int j = -1;
+            double difficultyNote = double.PositiveInfinity;
+            HitResult hitResultTried = HitResult.None;
+            while (PlayerLevel <= difficultyNote && j < 4)
+            {
+                j++;
+                hitResultTried = Judgements[j];
+
+                if (previousInColumn[obj.Column] < 0)
+                {
+                    difficultyNote = 0;
+                }
+                else if (nextInColumn[obj.Column] >= listObjects.Count)
+                {
+                    double latestHitPossible = obj.StartTime - listObjects[previousInColumn[obj.Column]].StartTime + listObjects[i].HitWindows.WindowFor(Judgements[j]);
+                    difficultyNote = 1000.0 / latestHitPossible;
+                }
+                else
+                {
+                    double latestHitPossible = obj.StartTime - listObjects[previousInColumn[obj.Column]].StartTime + listObjects[i].HitWindows.WindowFor(Judgements[j]);
+                    double balancedTiming = (listObjects[nextInColumn[obj.Column]].StartTime - listObjects[previousInColumn[obj.Column]].GetEndTime()) / 2;
+                    difficultyNote = Math.Max(1000.0 / latestHitPossible, 1000.0 / balancedTiming);
+                }
+
+            };
+
+            if (PlayerLevel <= difficultyNote)
+            {
+                return Judgements[5];
+            }
+
+            return hitResultTried;
+        }
+        protected virtual HitResult GetSimulatedTailHitResult(Judgement judgement, List<ManiaHitObject> listObjects, int i, double PlayerLevel, List<int> previousInColumn, List<int> nextInColumn, List<int> currentHoldNoteId)
+        {
+            return Judgements[0];
         }
 
-
-        protected virtual List<double> DifficultyPerJudgement(List<ManiaHitObject> listObjects, int i)
+        private int getNextInColumn(List<ManiaHitObject> listObjects, int i)
         {
-            if (i == 0)
-            {
-                return new List<double>() { 0, 0, 0, 0, 0, 0 };
-            }
-            else if (i == listObjects.Count - 1)
-            {
-                List<double> difficultyPerJudgement = new List<double> { 0, 0, 0, 0, 0, 0 };
-                for (int j = 0; j < difficultyPerJudgement.Count - 1; j++)
-                {
-                    double latestHitPossible = listObjects[i].StartTime - listObjects[i - 1].StartTime + listObjects[i].HitWindows.WindowFor(Judgements[j]);
-                    difficultyPerJudgement[j] = 1000.0 / latestHitPossible;
-                }
-                return difficultyPerJudgement;
-
-            }
-            else
-            {
-                List<double> difficultyPerJudgement = new List<double> { 0, 0, 0, 0, 0, 0 };
-                for (int j = 0; j < difficultyPerJudgement.Count - 1; j++)
-                {
-                    double latestHitPossible = listObjects[i].StartTime - listObjects[i - 1].StartTime + listObjects[i].HitWindows.WindowFor(Judgements[j]);
-                    double balancedTiming = (listObjects[i + 1].StartTime - listObjects[i - 1].StartTime) / 2;
-                    difficultyPerJudgement[j] = Math.Max(1000.0 / latestHitPossible, 1000.0 / balancedTiming);
-                }
-                return difficultyPerJudgement;
-            }
+            int j = i + 1;
+            while (j < listObjects.Count() && listObjects[j].Column != listObjects[i].Column) j++;
+            return j;
         }
     }
 }
