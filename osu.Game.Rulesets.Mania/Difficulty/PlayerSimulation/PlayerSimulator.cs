@@ -30,6 +30,9 @@ namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
 
         public readonly List<HitResult> Judgements = new List<HitResult>() { HitResult.Perfect, HitResult.Great, HitResult.Good, HitResult.Ok, HitResult.Meh, HitResult.Miss };
 
+        public readonly List<double> PressTimings = new List<double>();
+        public readonly List<double> ReleaseTimings = new List<double>();
+
         public void ScoreReset()
         {
             base.Reset(false);
@@ -48,6 +51,8 @@ namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
 
             nextInColumn = Enumerable.Repeat(-1, numberObjects).ToList();
             previousInColumn = Enumerable.Repeat(-1, numberObjects).ToList();
+            PressTimings = Enumerable.Repeat(-1.0, numberObjects).ToList();
+            ReleaseTimings = Enumerable.Repeat(-1.0, numberObjects).ToList();
 
             for (int i = 0; i < listObjects.Count; i++)
             {
@@ -67,7 +72,6 @@ namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
             {
                 nextInColumn[i] = numberObjects;
             }
-
         }
 
         public void SimulatePlayer(double PlayerLevel)
@@ -95,6 +99,7 @@ namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
                     {
                         var judgementTail = holdNote.Tail.CreateJudgement();
                         var resultTail = CreateResult(holdNote, judgementTail) ?? throw new InvalidOperationException($"{GetType().ReadableName()} must provide a {nameof(JudgementResult)} through {nameof(CreateResult)}.");
+
                         resultTail.Type = GetSimulatedTailHitResult(holdNote.Tail, currentHoldNoteId[j], i, PlayerLevel, currentHoldNoteId);
                         ApplyResult(resultTail);
 
@@ -154,6 +159,7 @@ namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
             int j = -1;
             double difficultyNote = double.PositiveInfinity;
             HitResult hitResultTried = HitResult.None;
+
             while (PlayerLevel < difficultyNote && j < 4)
             {
                 j++;
@@ -184,7 +190,8 @@ namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
             {
                 return Judgements[5];
             }
-
+            PressTimings[i] = obj.HitWindows.WindowFor(hitResultTried) + obj.StartTime - 0.5;
+            ReleaseTimings[i] = obj.HitWindows.WindowFor(hitResultTried) + obj.StartTime + 1 - 0.5;
             return hitResultTried;
         }
         protected virtual HitResult GetSimulatedTailHitResult(ManiaHitObject obj, int tailNote, int currentNote, double PlayerLevel, List<int> currentHoldNoteId)
@@ -212,6 +219,7 @@ namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
             {
                 return Judgements[5];
             }
+            ReleaseTimings[tailNote] = -obj.HitWindows.WindowFor(hitResultTried) + obj.GetEndTime() + 0.5;
             return hitResultTried;
         }
     }

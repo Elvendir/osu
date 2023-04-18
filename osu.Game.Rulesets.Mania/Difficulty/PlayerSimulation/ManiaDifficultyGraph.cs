@@ -33,7 +33,7 @@ namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
     {
         private GraphContainer graphs = null!;
         private FillFlowContainer legend = null!;
-        private int maxPlayerLevel = 10;
+        private int maxPlayerLevel = 15;
 
         private readonly List<HitResult> judgements = new List<HitResult>() { HitResult.Perfect, HitResult.Great, HitResult.Good, HitResult.Ok, HitResult.Meh, HitResult.Miss };
 
@@ -80,7 +80,8 @@ namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
         {
             graphs.Clear();
             legend.Clear();
-            runForProcessor("lazer-standardised", workingBeatmap.GetPlayableBeatmap(new ManiaRuleset().RulesetInfo), Color4.Blue);
+            if (workingBeatmap.BeatmapInfo.Ruleset.ShortName == "mania")
+                runForProcessor("lazer-standardised", workingBeatmap.GetPlayableBeatmap(new ManiaRuleset().RulesetInfo), Color4.Blue);
         }
 
         private void runForProcessor(string name, IBeatmap beatmap, Color4 colour)
@@ -103,19 +104,14 @@ namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
                 {
                     float judgment_percent_f = processor.HitEvents.Where(d => d.Result == processor.Judgements[j]).Count();
                     maxHitEvents = processor.HitEvents.Where(d => processor.Judgements.Contains(d.Result)).Count();
-                    if (j == 0)
-                    {
-                        judgement_percent[j].Add(judgment_percent_f);
-                    }
-                    else
-                    {
-                        judgement_percent[j].Add(judgment_percent_f + judgement_percent[j - 1].Last());
-                    }
+
+                    judgement_percent[j].Add(judgment_percent_f);
+
                 }
                 processor.ScoreReset();
 
             }
-            List<Color4> colors = new List<Color4>() { Color4.White, Color4.Yellow, Color4.Green, Color4.Cyan, Color4.Red };
+            List<Color4> colors = new List<Color4>() { Color4.White, Color4.Yellow, Color4.Green, Color4.Cyan, Color4.Purple, Color4.Red };
             graphs.MaxCombo.Value = maxPlayerLevel;
 
             graphs.Add(new LineGraph
@@ -127,7 +123,7 @@ namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
                 MinValue = 0,
                 Values = results,
             });
-            for (int j = 0; j < 5; j++)
+            for (int j = 0; j < 6; j++)
             {
                 graphs.Add(new LineGraph
                 {
@@ -362,7 +358,6 @@ namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
 
                 textFlow.AddParagraph($"At PlayerLevel {relevantCombo}:");
 
-                float lastHits = 0;
                 foreach (var graph in content)
                 {
                     float valueAtHover = graph.Values.ElementAt(relevantCombo * 10);
@@ -375,8 +370,7 @@ namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
                     }
                     else
                     {
-                        textFlow.AddParagraph($"{graph.Name}: {valueAtHover - lastHits:#,0} ", st => st.Colour = graph.LineColour);
-                        lastHits = valueAtHover;
+                        textFlow.AddParagraph($"{graph.Name}: {valueAtHover:#,0} ", st => st.Colour = graph.LineColour);
                     }
                 }
             }
