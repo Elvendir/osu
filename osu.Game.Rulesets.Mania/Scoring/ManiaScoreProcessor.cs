@@ -13,6 +13,10 @@ namespace osu.Game.Rulesets.Mania.Scoring
             : base(new ManiaRuleset())
         {
         }
+        protected override void Reset(bool storeResults)
+        {
+            base.Reset(storeResults);
+        }
 
         protected override double DefaultAccuracyPortion => 0.99;
 

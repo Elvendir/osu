@@ -90,11 +90,11 @@ namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
             List<List<float>> judgement_percent = new List<List<float>>();
             float maxHitEvents = 1;
 
+            var processor = new PlayerSimulator(beatmap);
+            processor.ApplyBeatmap(beatmap);
             for (double i = 0; i < maxPlayerLevel; i += 0.1)
             {
-                var processor = new PlayerSimulator();
-                processor.ApplyBeatmap(beatmap);
-                processor.SimulatePlayer(beatmap, i);
+                processor.SimulatePlayer(i);
                 results.Add(processor.TotalScore.Value);
                 if (i == 0)
                     for (int j = 0; j < 6; j++)
@@ -112,6 +112,7 @@ namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
                         judgement_percent[j].Add(judgment_percent_f + judgement_percent[j - 1].Last());
                     }
                 }
+                processor.ScoreReset();
 
             }
             List<Color4> colors = new List<Color4>() { Color4.White, Color4.Yellow, Color4.Green, Color4.Cyan, Color4.Red };
