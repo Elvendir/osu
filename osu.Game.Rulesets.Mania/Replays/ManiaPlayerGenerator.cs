@@ -77,14 +77,23 @@ namespace osu.Game.Rulesets.Mania.Replays
 
         private IEnumerable<IActionPoint> generateActionPoints()
         {
-            for (int i = 0; i < Beatmap.HitObjects.Count(); i++)
+            for (int i = 0; i < Simulator.ListNestedObjects.Count(); i++)
             {
-                var currentObject = Beatmap.HitObjects.OrderBy(h => h.StartTime).ToList()[i];
+                var currentObject = Simulator.ListNestedObjects[i];
+
                 if (Simulator.PressTimings[i] >= 0)
                 {
-                    yield return new HitPoint { Time = Simulator.PressTimings[i], Column = currentObject.Column };
+                    if (currentObject is HeadNote)
+                    {
+                        yield return new HitPoint { Time = Simulator.PressTimings[i], Column = currentObject.Column };
+                        yield return new ReleasePoint { Time = Simulator.PressTimings[Simulator.NextInColumn[i]], Column = currentObject.Column };
 
-                    yield return new ReleasePoint { Time = Simulator.ReleaseTimings[i], Column = currentObject.Column };
+                    }
+                    else if (currentObject is not TailNote && currentObject is not HoldNoteTick)
+                    {
+                        yield return new HitPoint { Time = Simulator.PressTimings[i], Column = currentObject.Column };
+                        yield return new ReleasePoint { Time = Simulator.PressTimings[i] + 10, Column = currentObject.Column };
+                    }
                 }
             }
         }

@@ -89,10 +89,10 @@ namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
 
             List<float> results = new List<float>();
             List<List<float>> judgement_percent = new List<List<float>>();
-            float maxHitEvents = 1;
 
             var processor = new PlayerSimulator(beatmap);
-            processor.ApplyBeatmap(beatmap);
+            float maxHitEvents = processor.NumberNestedObjects;
+
             for (double i = 0; i < maxPlayerLevel; i += 0.1)
             {
                 processor.SimulatePlayer(i);
@@ -102,14 +102,10 @@ namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
                         judgement_percent.Add(new List<float>());
                 for (int j = 0; j < 6; j++)
                 {
-                    float judgment_percent_f = processor.HitEvents.Where(d => d.Result == processor.Judgements[j]).Count();
-                    maxHitEvents = processor.HitEvents.Where(d => processor.Judgements.Contains(d.Result)).Count();
-
-                    judgement_percent[j].Add(judgment_percent_f);
+                    judgement_percent[j].Add(processor.HitResults[j]);
 
                 }
                 processor.ScoreReset();
-
             }
             List<Color4> colors = new List<Color4>() { Color4.White, Color4.Yellow, Color4.Green, Color4.Cyan, Color4.Purple, Color4.Red };
             graphs.MaxCombo.Value = maxPlayerLevel;
@@ -169,7 +165,7 @@ namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
         private readonly Container missLines;
         private readonly Container verticalGridLines;
 
-        public int CurrentHoverCombo { get; private set; }
+        public double CurrentHoverCombo { get; private set; }
 
         public GraphContainer()
         {
@@ -293,7 +289,7 @@ namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
 
         protected override bool OnMouseMove(MouseMoveEvent e)
         {
-            CurrentHoverCombo = (int)(e.MousePosition.X / DrawWidth * MaxCombo.Value);
+            CurrentHoverCombo = (e.MousePosition.X / DrawWidth * MaxCombo.Value);
 
             hoverLine.X = e.MousePosition.X;
             return base.OnMouseMove(e);
@@ -348,7 +344,7 @@ namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
             private int? lastContentCombo;
             public void SetContent(IEnumerable<LineGraph> content)
             {
-                int relevantCombo = graphContainer.CurrentHoverCombo;
+                int relevantCombo = (int)(graphContainer.CurrentHoverCombo * 10);
 
                 if (lastContentCombo == relevantCombo)
                     return;
@@ -356,11 +352,11 @@ namespace osu.Game.Rulesets.Mania.Difficulty.PlayerSimulation
                 lastContentCombo = relevantCombo;
                 textFlow.Clear();
 
-                textFlow.AddParagraph($"At PlayerLevel {relevantCombo}:");
+                textFlow.AddParagraph($"At PlayerLevel {relevantCombo / 10.0:#,0.0}");
 
                 foreach (var graph in content)
                 {
-                    float valueAtHover = graph.Values.ElementAt(relevantCombo * 10);
+                    float valueAtHover = graph.Values.ElementAt(relevantCombo);
                     float ofTotal = valueAtHover / graph.Values.Last();
 
                     if (graph.Name == "lazer-standardised")
